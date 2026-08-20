@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>ASC Examination Attendance</title>
+
+  <script
+    src="https://unpkg.com/html5-qrcode"
+    type="text/javascript">
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 18px;
+      border-radius: 16px;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+    }
+
+    #reader {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #222;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    #stopButton {
+      background: #ddd;
+      color: #222;
+    }
+
+    #result {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      background: #eef6ff;
+      border-radius: 12px;
+      word-break: break-word;
+    }
+
+    .label {
+      font-weight: bold;
+    }
+
+    .success {
+      color: #16803c;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>ASC Examination Attendance</h1>
+
+  <div class="subtitle">
+    Scan the student's examination pass
+  </div>
+
+  <div class="card">
+
+    <div id="reader"></div>
+
+    <button
+      id="startButton"
+      onclick="startScanner()">
+      START SCANNER
+    </button>
+
+    <button
+      id="stopButton"
+      onclick="stopScanner()"
+      disabled>
+      STOP
+    </button>
+
+    <div id="result">
+
+      <div class="success">
+        QR CODE DETECTED
+      </div>
+
+      <p>
+        <span class="label">Admission ID:</span>
+        <span id="admissionId"></span>
+      </p>
+
+      <p>
+        <span class="label">Name:</span>
+        <span id="studentName"></span>
+      </p>
+
+      <p>
+        <span class="label">Term:</span>
+        <span id="term"></span>
+      </p>
+
+      <p>
+        <span class="label">Class:</span>
+        <span id="className"></span>
+      </p>
+
+      <p>
+        <span class="label">Mode:</span>
+        <span id="mode"></span>
+      </p>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let scanner = null;
+let scannerRunning = false;
+let scanLocked = false;
+
+
+/* =========================================================
+   START SCANNER
+   ========================================================= */
+
+function startScanner() {
+
+  if (scannerRunning) {
+    return;
+  }
+
+  scanLocked = false;
+
+  scanner = new Html5Qrcode("reader");
+
+  const config = {
+    fps: 10,
+
+    qrbox: {
+      width: 250,
+      height: 250
+    }
+  };
+
+  scanner
+    .start(
+      {
+        facingMode: "environment"
+      },
+      config,
+      onScanSuccess,
+      onScanFailure
+    )
+    .then(function() {
+
+      scannerRunning = true;
+
+      document.getElementById(
+        "startButton"
+      ).disabled = true;
+
+      document.getElementById(
+        "stopButton"
+      ).disabled = false;
+
+    })
+    .catch(function(error) {
+
+      alert(
+        "Camera could not be started.\n\n" +
+        "Please allow camera access and try again."
+      );
+
+      console.error(error);
+
+    });
+}
+
+
+/* =========================================================
+   STOP SCANNER
+   ========================================================= */
+
+function stopScanner() {
+
+  if (!scanner || !scannerRunning) {
+    return;
+  }
+
+  scanner
+    .stop()
+    .then(function() {
+
+      scannerRunning = false;
+
+      document.getElementById(
+        "startButton"
+      ).disabled = false;
+
+      document.getElementById(
+        "stopButton"
+      ).disabled = true;
+
+    })
+    .catch(function(error) {
+
+      console.error(error);
+
+    });
+}
+
+
+/* =========================================================
+   QR DETECTED
+   ========================================================= */
+
+function onScanSuccess(decodedText) {
+
+  if (scanLocked) {
+    return;
+  }
+
+  scanLocked = true;
+
+  displayQrData(decodedText);
+
+  stopScanner();
+}
+
+
+/* =========================================================
+   QR SCAN FAILURE
+   ========================================================= */
+
+function onScanFailure(error) {
+
+  // Normal while camera is searching.
+}
+
+
+/* =========================================================
+   DISPLAY QR DATA
+   ========================================================= */
+
+function displayQrData(qrText) {
+
+  const lines =
+    qrText
+      .split(/\r?\n/)
+      .map(function(line) {
+        return line.trim();
+      });
+
+  document.getElementById(
+    "admissionId"
+  ).innerText =
+    lines[0] || "";
+
+  document.getElementById(
+    "studentName"
+  ).innerText =
+    lines[1] || "";
+
+  document.getElementById(
+    "term"
+  ).innerText =
+    lines[2] || "";
+
+  document.getElementById(
+    "className"
+  ).innerText =
+    lines[3] || "";
+
+  document.getElementById(
+    "mode"
+  ).innerText =
+    lines[4] || "";
+
+  document.getElementById(
+    "result"
+  ).style.display =
+    "block";
+}
+
+</script>
+
+</body>
+</html>
