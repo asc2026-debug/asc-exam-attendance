@@ -68,6 +68,12 @@
       color: white;
       font-size: 16px;
       font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     #stopButton {
@@ -90,8 +96,33 @@
 
     .success {
       color: #16803c;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: bold;
+    }
+
+    .rejected {
+      color: #b42318;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .processing {
+      color: #555;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .details {
+      margin-top: 15px;
+    }
+
+    .details p {
+      margin: 8px 0;
+    }
+
+    #scanAgainButton {
+      display: none;
+      background: #16803c;
     }
   </style>
 </head>
@@ -123,36 +154,64 @@
       STOP
     </button>
 
+    <button
+      id="scanAgainButton"
+      onclick="scanAgain()">
+      SCAN NEXT STUDENT
+    </button>
+
     <div id="result">
 
-      <div class="success">
-        QR CODE DETECTED
+      <div id="resultStatus"></div>
+
+      <div class="details">
+
+        <p>
+          <span class="label">Admission ID:</span>
+          <span id="admissionId"></span>
+        </p>
+
+        <p>
+          <span class="label">Name:</span>
+          <span id="studentName"></span>
+        </p>
+
+        <p>
+          <span class="label">Term:</span>
+          <span id="term"></span>
+        </p>
+
+        <p>
+          <span class="label">Class:</span>
+          <span id="className"></span>
+        </p>
+
+        <p>
+          <span class="label">Mode:</span>
+          <span id="mode"></span>
+        </p>
+
+        <p id="subjectRow">
+          <span class="label">Subject:</span>
+          <span id="subject"></span>
+        </p>
+
+        <p id="sessionRow">
+          <span class="label">Session:</span>
+          <span id="session"></span>
+        </p>
+
+        <p id="sessionTimeRow">
+          <span class="label">Time:</span>
+          <span id="sessionTime"></span>
+        </p>
+
+        <p>
+          <span class="label">Message:</span>
+          <span id="message"></span>
+        </p>
+
       </div>
-
-      <p>
-        <span class="label">Admission ID:</span>
-        <span id="admissionId"></span>
-      </p>
-
-      <p>
-        <span class="label">Name:</span>
-        <span id="studentName"></span>
-      </p>
-
-      <p>
-        <span class="label">Term:</span>
-        <span id="term"></span>
-      </p>
-
-      <p>
-        <span class="label">Class:</span>
-        <span id="className"></span>
-      </p>
-
-      <p>
-        <span class="label">Mode:</span>
-        <span id="mode"></span>
-      </p>
 
     </div>
 
@@ -162,6 +221,10 @@
 
 
 <script>
+
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyKTErYaZLWhrJgONe1wsbx_bg70mGRttpQxabTQBc7fCPowFkD9d6HjmLFUe4VFHPsaQ/exec";
+
 
 let scanner = null;
 let scannerRunning = false;
@@ -179,6 +242,14 @@ function startScanner() {
   }
 
   scanLocked = false;
+
+  document.getElementById(
+    "result"
+  ).style.display = "none";
+
+  document.getElementById(
+    "scanAgainButton"
+  ).style.display = "none";
 
   scanner = new Html5Qrcode("reader");
 
@@ -233,10 +304,10 @@ function startScanner() {
 function stopScanner() {
 
   if (!scanner || !scannerRunning) {
-    return;
+    return Promise.resolve();
   }
 
-  scanner
+  return scanner
     .stop()
     .then(function() {
 
@@ -271,9 +342,14 @@ function onScanSuccess(decodedText) {
 
   scanLocked = true;
 
-  displayQrData(decodedText);
+  stopScanner()
+    .then(function() {
 
-  stopScanner();
+      showProcessing(decodedText);
+
+      sendAttendanceScan(decodedText);
+
+    });
 }
 
 
@@ -288,10 +364,10 @@ function onScanFailure(error) {
 
 
 /* =========================================================
-   DISPLAY QR DATA
+   SHOW PROCESSING
    ========================================================= */
 
-function displayQrData(qrText) {
+function showProcessing(qrText) {
 
   const lines =
     qrText
@@ -326,9 +402,360 @@ function displayQrData(qrText) {
     lines[4] || "";
 
   document.getElementById(
+    "subject"
+  ).innerText = "";
+
+  document.getElementById(
+    "session"
+  ).innerText = "";
+
+  document.getElementById(
+    "sessionTime"
+  ).innerText = "";
+
+  document.getElementById(
+    "message"
+  ).innerText =
+    "Checking attendance...";
+
+  document.getElementById(
+    "subjectRow"
+  ).style.display = "none";
+
+  document.getElementById(
+    "sessionRow"
+  ).style.display = "none";
+
+  document.getElementById(
+    "sessionTimeRow"
+  ).style.display = "none";
+
+  const status =
+    document.getElementById(
+      "resultStatus"
+    );
+
+  status.className = "processing";
+  status.innerText =
+    "PROCESSING...";
+
+  document.getElementById(
     "result"
+  ).style.display = "block";
+}
+
+
+/* =========================================================
+   SEND QR TO APPS SCRIPT
+   ========================================================= */
+
+function sendAttendanceScan(qrText) {
+
+  const callbackName =
+    "attendanceCallback_" +
+    Date.now();
+
+  window[callbackName] =
+    function(result) {
+
+      try {
+
+        displayAttendanceResult(
+          result
+        );
+
+      } finally {
+
+        delete window[callbackName];
+
+        const script =
+          document.getElementById(
+            callbackName
+          );
+
+        if (script) {
+          script.remove();
+        }
+      }
+    };
+
+
+  const url =
+    APPS_SCRIPT_URL +
+    "?api=attendance" +
+    "&qrText=" +
+    encodeURIComponent(qrText) +
+    "&callback=" +
+    encodeURIComponent(callbackName) +
+    "&_=" +
+    Date.now();
+
+
+  const script =
+    document.createElement(
+      "script"
+    );
+
+  script.id =
+    callbackName;
+
+  script.src = url;
+
+  script.onerror =
+    function() {
+
+      delete window[callbackName];
+
+      const result =
+        document.getElementById(
+          "resultStatus"
+        );
+
+      result.className =
+        "rejected";
+
+      result.innerText =
+        "CONNECTION ERROR";
+
+      document.getElementById(
+        "message"
+      ).innerText =
+        "Could not contact the attendance system.";
+
+      document.getElementById(
+        "scanAgainButton"
+      ).style.display =
+        "block";
+    };
+
+
+  document
+    .body
+    .appendChild(script);
+}
+
+
+/* =========================================================
+   DISPLAY ATTENDANCE RESULT
+   ========================================================= */
+
+function displayAttendanceResult(
+  result
+) {
+
+  if (!result) {
+
+    showRejected(
+      "No response received from attendance system."
+    );
+
+    return;
+  }
+
+
+  const success =
+    result.success === true;
+
+
+  if (success) {
+
+    const status =
+      document.getElementById(
+        "resultStatus"
+      );
+
+    status.className =
+      "success";
+
+    status.innerText =
+      "✓ PRESENT";
+
+    document.getElementById(
+      "message"
+    ).innerText =
+      result.message || "Attendance recorded.";
+
+  } else {
+
+    const status =
+      document.getElementById(
+        "resultStatus"
+      );
+
+    status.className =
+      "rejected";
+
+    status.innerText =
+      "✗ " +
+      (
+        result.status ||
+        "REJECTED"
+      );
+
+    document.getElementById(
+      "message"
+    ).innerText =
+      result.message ||
+      "Attendance was not recorded.";
+  }
+
+
+  if (result.admissionId) {
+
+    document.getElementById(
+      "admissionId"
+    ).innerText =
+      result.admissionId;
+  }
+
+
+  if (result.studentName) {
+
+    document.getElementById(
+      "studentName"
+    ).innerText =
+      result.studentName;
+  }
+
+
+  if (result.term) {
+
+    document.getElementById(
+      "term"
+    ).innerText =
+      result.term;
+  }
+
+
+  if (result.className) {
+
+    document.getElementById(
+      "className"
+    ).innerText =
+      result.className;
+  }
+
+
+  if (result.modeOfExam) {
+
+    document.getElementById(
+      "mode"
+    ).innerText =
+      result.modeOfExam;
+  }
+
+
+  if (result.subject) {
+
+    document.getElementById(
+      "subject"
+    ).innerText =
+      result.subject;
+
+    document.getElementById(
+      "subjectRow"
+    ).style.display =
+      "block";
+  }
+
+
+  if (result.session) {
+
+    document.getElementById(
+      "session"
+    ).innerText =
+      "Session " +
+      result.session;
+
+    document.getElementById(
+      "sessionRow"
+    ).style.display =
+      "block";
+  }
+
+
+  if (result.sessionTime) {
+
+    document.getElementById(
+      "sessionTime"
+    ).innerText =
+      result.sessionTime;
+
+    document.getElementById(
+      "sessionTimeRow"
+    ).style.display =
+      "block";
+  }
+
+
+  document.getElementById(
+    "scanAgainButton"
   ).style.display =
     "block";
+}
+
+
+/* =========================================================
+   REJECTED RESULT
+   ========================================================= */
+
+function showRejected(message) {
+
+  const status =
+    document.getElementById(
+      "resultStatus"
+    );
+
+  status.className =
+    "rejected";
+
+  status.innerText =
+    "✗ REJECTED";
+
+  document.getElementById(
+    "message"
+  ).innerText =
+    message;
+
+  document.getElementById(
+    "scanAgainButton"
+  ).style.display =
+    "block";
+}
+
+
+/* =========================================================
+   SCAN NEXT STUDENT
+   ========================================================= */
+
+function scanAgain() {
+
+  document.getElementById(
+    "result"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "scanAgainButton"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "subjectRow"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "sessionRow"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "sessionTimeRow"
+  ).style.display =
+    "none";
+
+  startScanner();
 }
 
 </script>
