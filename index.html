@@ -229,6 +229,14 @@ const APPS_SCRIPT_URL =
 let scanner = null;
 let scannerRunning = false;
 let scanLocked = false;
+const successSound =
+  new Audio("accessgranted.mp3");
+
+const rejectedSound =
+  new Audio("accessdenied.mp3");
+
+successSound.preload = "auto";
+rejectedSound.preload = "auto";
 
 
 /* =========================================================
@@ -558,6 +566,10 @@ function displayAttendanceResult(
 
 
   if (success) {
+    successSound.currentTime = 0;
+    successSound.play().catch(function(error) {
+      console.log("Success sound could not play:", error);
+    });
 
     const status =
       document.getElementById(
@@ -576,6 +588,10 @@ function displayAttendanceResult(
       result.message || "Attendance recorded.";
 
   } else {
+    rejectedSound.currentTime = 0;
+    rejectedSound.play().catch(function(error) {
+      console.log("Rejected sound could not play:", error);
+    });
 
     const status =
       document.getElementById(
