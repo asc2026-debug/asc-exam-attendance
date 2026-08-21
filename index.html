@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,6 +18,7 @@
   </script>
 
   <style>
+
     * {
       box-sizing: border-box;
     }
@@ -52,10 +54,35 @@
       box-shadow: 0 3px 15px rgba(0,0,0,0.08);
     }
 
+    .selection-group {
+      margin-bottom: 15px;
+    }
+
+    .selection-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: white;
+      font-size: 16px;
+    }
+
+    select:disabled {
+      background: #f0f0f0;
+      color: #888;
+    }
+
     #reader {
       width: 100%;
       overflow: hidden;
       border-radius: 12px;
+      margin-top: 18px;
     }
 
     button {
@@ -79,6 +106,11 @@
     #stopButton {
       background: #ddd;
       color: #222;
+    }
+
+    #scanAgainButton {
+      display: none;
+      background: #16803c;
     }
 
     #result {
@@ -120,12 +152,24 @@
       margin: 8px 0;
     }
 
-    #scanAgainButton {
-      display: none;
-      background: #16803c;
+    .loading {
+      color: #666;
+      font-size: 14px;
+      margin-top: 8px;
     }
+
+    .selected-info {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f7f7f7;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
   </style>
+
 </head>
+
 
 <body>
 
@@ -137,78 +181,220 @@
     Scan the student's examination pass
   </div>
 
+
   <div class="card">
+
+
+    <!-- =====================================================
+         CLASS
+         ===================================================== -->
+
+    <div class="selection-group">
+
+      <label for="classSelect">
+        CLASS
+      </label>
+
+      <select
+        id="classSelect"
+        onchange="classChanged()">
+
+        <option value="">
+          Loading classes...
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <!-- =====================================================
+         MODE
+         ===================================================== -->
+
+    <div class="selection-group">
+
+      <label for="modeSelect">
+        MODE
+      </label>
+
+      <select
+        id="modeSelect"
+        onchange="modeChanged()"
+        disabled>
+
+        <option value="">
+          Select class first
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <!-- =====================================================
+         SUBJECT
+         ===================================================== -->
+
+    <div class="selection-group">
+
+      <label for="subjectSelect">
+        SUBJECT
+      </label>
+
+      <select
+        id="subjectSelect"
+        disabled>
+
+        <option value="">
+          Select class and mode first
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div
+      id="selectedInfo"
+      class="selected-info">
+
+      Select a class, mode and subject before scanning.
+
+    </div>
+
+
+    <!-- =====================================================
+         SCANNER
+         ===================================================== -->
 
     <div id="reader"></div>
 
+
     <button
       id="startButton"
-      onclick="startScanner()">
+      onclick="startScanner()"
+      disabled>
+
       START SCANNER
+
     </button>
+
 
     <button
       id="stopButton"
       onclick="stopScanner()"
       disabled>
+
       STOP
+
     </button>
+
 
     <button
       id="scanAgainButton"
       onclick="scanAgain()">
+
       SCAN NEXT STUDENT
+
     </button>
+
+
+    <!-- =====================================================
+         RESULT
+         ===================================================== -->
 
     <div id="result">
 
       <div id="resultStatus"></div>
 
+
       <div class="details">
 
         <p>
-          <span class="label">Admission ID:</span>
+          <span class="label">
+            Admission ID:
+          </span>
+
           <span id="admissionId"></span>
         </p>
 
+
         <p>
-          <span class="label">Name:</span>
+          <span class="label">
+            Name:
+          </span>
+
           <span id="studentName"></span>
         </p>
 
+
         <p>
-          <span class="label">Term:</span>
+          <span class="label">
+            Term:
+          </span>
+
           <span id="term"></span>
         </p>
 
+
         <p>
-          <span class="label">Class:</span>
+          <span class="label">
+            Class:
+          </span>
+
           <span id="className"></span>
         </p>
 
+
         <p>
-          <span class="label">Mode:</span>
+          <span class="label">
+            Mode:
+          </span>
+
           <span id="mode"></span>
         </p>
 
-        <p id="subjectRow">
-          <span class="label">Subject:</span>
+
+        <p>
+          <span class="label">
+            Subject:
+          </span>
+
           <span id="subject"></span>
         </p>
 
+
         <p id="sessionRow">
-          <span class="label">Session:</span>
+
+          <span class="label">
+            Session:
+          </span>
+
           <span id="session"></span>
+
         </p>
+
 
         <p id="sessionTimeRow">
-          <span class="label">Time:</span>
+
+          <span class="label">
+            Time:
+          </span>
+
           <span id="sessionTime"></span>
+
         </p>
 
+
         <p>
-          <span class="label">Message:</span>
+
+          <span class="label">
+            Message:
+          </span>
+
           <span id="message"></span>
+
         </p>
 
       </div>
@@ -222,21 +408,569 @@
 
 <script>
 
+
+/* =========================================================
+   APPS SCRIPT URL
+   ========================================================= */
+
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyKTErYaZLWhrJgONe1wsbx_bg70mGRttpQxabTQBc7fCPowFkD9d6HjmLFUe4VFHPsaQ/exec";
 
 
+/* =========================================================
+   SCANNER VARIABLES
+   ========================================================= */
+
 let scanner = null;
+
 let scannerRunning = false;
+
 let scanLocked = false;
+
+
 const successSound =
   new Audio("accessgranted.mp3");
 
 const rejectedSound =
   new Audio("accessdenied.mp3");
 
+
 successSound.preload = "auto";
+
 rejectedSound.preload = "auto";
+
+
+/* =========================================================
+   PAGE LOAD
+   ========================================================= */
+
+window.addEventListener(
+  "load",
+  function() {
+
+    loadAttendanceOptions();
+
+  }
+);
+
+
+/* =========================================================
+   GET JSONP FROM APPS SCRIPT
+   ========================================================= */
+
+function jsonpRequest(
+  url,
+  callback
+) {
+
+  const callbackName =
+    "jsonpCallback_" +
+    Date.now() +
+    "_" +
+    Math.floor(
+      Math.random() * 100000
+    );
+
+
+  window[callbackName] =
+    function(data) {
+
+      try {
+
+        callback(data);
+
+      } finally {
+
+        delete window[callbackName];
+
+        const script =
+          document.getElementById(
+            callbackName
+          );
+
+        if (script) {
+          script.remove();
+        }
+
+      }
+
+    };
+
+
+  const script =
+    document.createElement(
+      "script"
+    );
+
+
+  script.id =
+    callbackName;
+
+
+  script.src =
+    url +
+    "&callback=" +
+    encodeURIComponent(
+      callbackName
+    ) +
+    "&_=" +
+    Date.now();
+
+
+  script.onerror =
+    function() {
+
+      delete window[callbackName];
+
+      const scriptElement =
+        document.getElementById(
+          callbackName
+        );
+
+      if (scriptElement) {
+        scriptElement.remove();
+      }
+
+      callback(null);
+
+    };
+
+
+  document.body.appendChild(
+    script
+  );
+
+}
+
+
+/* =========================================================
+   LOAD CLASS + MODE OPTIONS
+   ========================================================= */
+
+function loadAttendanceOptions() {
+
+  const classSelect =
+    document.getElementById(
+      "classSelect"
+    );
+
+
+  classSelect.innerHTML =
+    '<option value="">Loading classes...</option>';
+
+
+  const url =
+    APPS_SCRIPT_URL +
+    "?api=attendanceOptions";
+
+
+  jsonpRequest(
+    url,
+    function(data) {
+
+      if (!data) {
+
+        classSelect.innerHTML =
+          '<option value="">Unable to load classes</option>';
+
+        return;
+
+      }
+
+
+      classSelect.innerHTML =
+        '<option value="">Select class</option>';
+
+
+      const classes =
+        data.classes || [];
+
+
+      classes.forEach(
+        function(className) {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+          option.value =
+            className;
+
+          option.textContent =
+            className;
+
+          classSelect.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      updateStartButton();
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CLASS CHANGED
+   ========================================================= */
+
+function classChanged() {
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const modeSelect =
+    document.getElementById(
+      "modeSelect"
+    );
+
+
+  const subjectSelect =
+    document.getElementById(
+      "subjectSelect"
+    );
+
+
+  modeSelect.innerHTML =
+    '<option value="">Loading modes...</option>';
+
+
+  modeSelect.disabled = true;
+
+
+  subjectSelect.innerHTML =
+    '<option value="">Select class and mode first</option>';
+
+
+  subjectSelect.disabled = true;
+
+
+  updateSelectedInfo();
+
+
+  if (!selectedClass) {
+
+    modeSelect.innerHTML =
+      '<option value="">Select class first</option>';
+
+    updateStartButton();
+
+    return;
+
+  }
+
+
+  const url =
+    APPS_SCRIPT_URL +
+    "?api=attendanceOptions" +
+    "&selectedClass=" +
+    encodeURIComponent(
+      selectedClass
+    );
+
+
+  jsonpRequest(
+    url,
+    function(data) {
+
+      if (!data) {
+
+        modeSelect.innerHTML =
+          '<option value="">Unable to load modes</option>';
+
+        updateStartButton();
+
+        return;
+
+      }
+
+
+      modeSelect.innerHTML =
+        '<option value="">Select mode</option>';
+
+
+      const modes =
+        data.modes || [];
+
+
+      modes.forEach(
+        function(mode) {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+          option.value =
+            mode;
+
+          option.textContent =
+            mode;
+
+          modeSelect.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      modeSelect.disabled =
+        false;
+
+
+      updateStartButton();
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   MODE CHANGED
+   ========================================================= */
+
+function modeChanged() {
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const selectedMode =
+    document.getElementById(
+      "modeSelect"
+    ).value;
+
+
+  const subjectSelect =
+    document.getElementById(
+      "subjectSelect"
+    );
+
+
+  subjectSelect.innerHTML =
+    '<option value="">Loading subjects...</option>';
+
+
+  subjectSelect.disabled =
+    true;
+
+
+  updateSelectedInfo();
+
+
+  if (
+    !selectedClass ||
+    !selectedMode
+  ) {
+
+    subjectSelect.innerHTML =
+      '<option value="">Select class and mode first</option>';
+
+    updateStartButton();
+
+    return;
+
+  }
+
+
+  const url =
+    APPS_SCRIPT_URL +
+    "?api=attendanceOptions" +
+    "&selectedClass=" +
+    encodeURIComponent(
+      selectedClass
+    ) +
+    "&selectedMode=" +
+    encodeURIComponent(
+      selectedMode
+    );
+
+
+  jsonpRequest(
+    url,
+    function(data) {
+
+      if (!data) {
+
+        subjectSelect.innerHTML =
+          '<option value="">Unable to load subjects</option>';
+
+        updateStartButton();
+
+        return;
+
+      }
+
+
+      subjectSelect.innerHTML =
+        '<option value="">Select subject</option>';
+
+
+      const subjects =
+        data.subjects || [];
+
+
+      subjects.forEach(
+        function(subject) {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+          option.value =
+            subject;
+
+          option.textContent =
+            subject;
+
+          subjectSelect.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      subjectSelect.disabled =
+        false;
+
+
+      updateSelectedInfo();
+
+      updateStartButton();
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   SUBJECT CHANGED
+   ========================================================= */
+
+document
+  .getElementById(
+    "subjectSelect"
+  )
+  .addEventListener(
+    "change",
+    function() {
+
+      updateSelectedInfo();
+
+      updateStartButton();
+
+    }
+  );
+
+
+/* =========================================================
+   DISPLAY CURRENT SELECTION
+   ========================================================= */
+
+function updateSelectedInfo() {
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const selectedMode =
+    document.getElementById(
+      "modeSelect"
+    ).value;
+
+
+  const selectedSubject =
+    document.getElementById(
+      "subjectSelect"
+    ).value;
+
+
+  const info =
+    document.getElementById(
+      "selectedInfo"
+    );
+
+
+  if (
+    !selectedClass ||
+    !selectedMode ||
+    !selectedSubject
+  ) {
+
+    info.innerText =
+      "Select a class, mode and subject before scanning.";
+
+    return;
+
+  }
+
+
+  info.innerText =
+    "Selected: " +
+    selectedClass +
+    " | " +
+    selectedMode +
+    " | " +
+    selectedSubject;
+
+}
+
+
+/* =========================================================
+   ENABLE / DISABLE START BUTTON
+   ========================================================= */
+
+function updateStartButton() {
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const selectedMode =
+    document.getElementById(
+      "modeSelect"
+    ).value;
+
+
+  const selectedSubject =
+    document.getElementById(
+      "subjectSelect"
+    ).value;
+
+
+  const startButton =
+    document.getElementById(
+      "startButton"
+    );
+
+
+  startButton.disabled =
+    !selectedClass ||
+    !selectedMode ||
+    !selectedSubject ||
+    scannerRunning;
+
+}
 
 
 /* =========================================================
@@ -249,59 +983,126 @@ function startScanner() {
     return;
   }
 
-  scanLocked = false;
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const selectedMode =
+    document.getElementById(
+      "modeSelect"
+    ).value;
+
+
+  const selectedSubject =
+    document.getElementById(
+      "subjectSelect"
+    ).value;
+
+
+  if (
+    !selectedClass ||
+    !selectedMode ||
+    !selectedSubject
+  ) {
+
+    alert(
+      "Please select Class, Mode and Subject before starting the scanner."
+    );
+
+    return;
+
+  }
+
+
+  scanLocked =
+    false;
+
 
   document.getElementById(
     "result"
-  ).style.display = "none";
+  ).style.display =
+    "none";
+
 
   document.getElementById(
     "scanAgainButton"
-  ).style.display = "none";
+  ).style.display =
+    "none";
 
-  scanner = new Html5Qrcode("reader");
+
+  scanner =
+    new Html5Qrcode(
+      "reader"
+    );
+
 
   const config = {
+
     fps: 10,
 
     qrbox: {
       width: 250,
       height: 250
     }
+
   };
+
 
   scanner
     .start(
       {
-        facingMode: "environment"
+        facingMode:
+          "environment"
       },
+
       config,
+
       onScanSuccess,
+
       onScanFailure
+
     )
-    .then(function() {
 
-      scannerRunning = true;
+    .then(
+      function() {
 
-      document.getElementById(
-        "startButton"
-      ).disabled = true;
+        scannerRunning =
+          true;
 
-      document.getElementById(
-        "stopButton"
-      ).disabled = false;
 
-    })
-    .catch(function(error) {
+        document.getElementById(
+          "startButton"
+        ).disabled =
+          true;
 
-      alert(
-        "Camera could not be started.\n\n" +
-        "Please allow camera access and try again."
-      );
 
-      console.error(error);
+        document.getElementById(
+          "stopButton"
+        ).disabled =
+          false;
 
-    });
+      }
+    )
+
+    .catch(
+      function(error) {
+
+        alert(
+          "Camera could not be started.\n\n" +
+          "Please allow camera access and try again."
+        );
+
+
+        console.error(
+          error
+        );
+
+      }
+    );
+
 }
 
 
@@ -311,30 +1112,53 @@ function startScanner() {
 
 function stopScanner() {
 
-  if (!scanner || !scannerRunning) {
+  if (
+    !scanner ||
+    !scannerRunning
+  ) {
+
     return Promise.resolve();
+
   }
+
 
   return scanner
     .stop()
-    .then(function() {
 
-      scannerRunning = false;
+    .then(
+      function() {
 
-      document.getElementById(
-        "startButton"
-      ).disabled = false;
+        scannerRunning =
+          false;
 
-      document.getElementById(
-        "stopButton"
-      ).disabled = true;
 
-    })
-    .catch(function(error) {
+        document.getElementById(
+          "startButton"
+        ).disabled =
+          false;
 
-      console.error(error);
 
-    });
+        updateStartButton();
+
+
+        document.getElementById(
+          "stopButton"
+        ).disabled =
+          true;
+
+      }
+    )
+
+    .catch(
+      function(error) {
+
+        console.error(
+          error
+        );
+
+      }
+    );
+
 }
 
 
@@ -342,22 +1166,35 @@ function stopScanner() {
    QR DETECTED
    ========================================================= */
 
-function onScanSuccess(decodedText) {
+function onScanSuccess(
+  decodedText
+) {
 
   if (scanLocked) {
     return;
   }
 
-  scanLocked = true;
+
+  scanLocked =
+    true;
+
 
   stopScanner()
-    .then(function() {
+    .then(
+      function() {
 
-      showProcessing(decodedText);
+        showProcessing(
+          decodedText
+        );
 
-      sendAttendanceScan(decodedText);
 
-    });
+        sendAttendanceScan(
+          decodedText
+        );
+
+      }
+    );
+
 }
 
 
@@ -365,9 +1202,12 @@ function onScanSuccess(decodedText) {
    QR SCAN FAILURE
    ========================================================= */
 
-function onScanFailure(error) {
+function onScanFailure(
+  error
+) {
 
   // Normal while camera is searching.
+
 }
 
 
@@ -375,81 +1215,95 @@ function onScanFailure(error) {
    SHOW PROCESSING
    ========================================================= */
 
-function showProcessing(qrText) {
+function showProcessing(
+  qrText
+) {
 
   const lines =
     qrText
       .split(/\r?\n/)
-      .map(function(line) {
-        return line.trim();
-      });
+      .map(
+        function(line) {
+          return line.trim();
+        }
+      );
+
 
   document.getElementById(
     "admissionId"
   ).innerText =
     lines[0] || "";
 
+
   document.getElementById(
     "studentName"
   ).innerText =
     lines[1] || "";
+
 
   document.getElementById(
     "term"
   ).innerText =
     lines[2] || "";
 
+
   document.getElementById(
     "className"
   ).innerText =
     lines[3] || "";
+
 
   document.getElementById(
     "mode"
   ).innerText =
     lines[4] || "";
 
+
   document.getElementById(
     "subject"
-  ).innerText = "";
+  ).innerText =
+    document.getElementById(
+      "subjectSelect"
+    ).value;
+
 
   document.getElementById(
     "session"
-  ).innerText = "";
+  ).innerText =
+    "";
+
 
   document.getElementById(
     "sessionTime"
-  ).innerText = "";
+  ).innerText =
+    "";
+
 
   document.getElementById(
     "message"
   ).innerText =
     "Checking attendance...";
 
-  document.getElementById(
-    "subjectRow"
-  ).style.display = "none";
-
-  document.getElementById(
-    "sessionRow"
-  ).style.display = "none";
-
-  document.getElementById(
-    "sessionTimeRow"
-  ).style.display = "none";
 
   const status =
     document.getElementById(
       "resultStatus"
     );
 
-  status.className = "processing";
+
+  status.className =
+    "processing";
+
+
   status.innerText =
     "PROCESSING...";
 
+
   document.getElementById(
     "result"
-  ).style.display = "block";
+  ).style.display =
+    "block";
+
 }
 
 
@@ -457,11 +1311,32 @@ function showProcessing(qrText) {
    SEND QR TO APPS SCRIPT
    ========================================================= */
 
-function sendAttendanceScan(qrText) {
+function sendAttendanceScan(
+  qrText
+) {
+
+  const selectedClass =
+    document.getElementById(
+      "classSelect"
+    ).value;
+
+
+  const selectedMode =
+    document.getElementById(
+      "modeSelect"
+    ).value;
+
+
+  const selectedSubject =
+    document.getElementById(
+      "subjectSelect"
+    ).value;
+
 
   const callbackName =
     "attendanceCallback_" +
     Date.now();
+
 
   window[callbackName] =
     function(result) {
@@ -476,25 +1351,51 @@ function sendAttendanceScan(qrText) {
 
         delete window[callbackName];
 
+
         const script =
           document.getElementById(
             callbackName
           );
 
+
         if (script) {
           script.remove();
         }
+
       }
+
     };
 
 
   const url =
     APPS_SCRIPT_URL +
     "?api=attendance" +
+
     "&qrText=" +
-    encodeURIComponent(qrText) +
+    encodeURIComponent(
+      qrText
+    ) +
+
+    "&selectedClass=" +
+    encodeURIComponent(
+      selectedClass
+    ) +
+
+    "&selectedMode=" +
+    encodeURIComponent(
+      selectedMode
+    ) +
+
+    "&selectedSubject=" +
+    encodeURIComponent(
+      selectedSubject
+    ) +
+
     "&callback=" +
-    encodeURIComponent(callbackName) +
+    encodeURIComponent(
+      callbackName
+    ) +
+
     "&_=" +
     Date.now();
 
@@ -504,42 +1405,55 @@ function sendAttendanceScan(qrText) {
       "script"
     );
 
+
   script.id =
     callbackName;
 
-  script.src = url;
+
+  script.src =
+    url;
+
 
   script.onerror =
     function() {
 
       delete window[callbackName];
 
+
       const result =
         document.getElementById(
           "resultStatus"
         );
 
+
       result.className =
         "rejected";
 
+
       result.innerText =
         "CONNECTION ERROR";
+
 
       document.getElementById(
         "message"
       ).innerText =
         "Could not contact the attendance system.";
 
+
       document.getElementById(
         "scanAgainButton"
       ).style.display =
         "block";
+
     };
 
 
   document
     .body
-    .appendChild(script);
+    .appendChild(
+      script
+    );
+
 }
 
 
@@ -558,6 +1472,7 @@ function displayAttendanceResult(
     );
 
     return;
+
   }
 
 
@@ -566,40 +1481,77 @@ function displayAttendanceResult(
 
 
   if (success) {
-    successSound.currentTime = 0;
-    successSound.play().catch(function(error) {
-      console.log("Success sound could not play:", error);
-    });
+
+    successSound.currentTime =
+      0;
+
+
+    successSound
+      .play()
+      .catch(
+        function(error) {
+
+          console.log(
+            "Success sound could not play:",
+            error
+          );
+
+        }
+      );
+
 
     const status =
       document.getElementById(
         "resultStatus"
       );
+
 
     status.className =
       "success";
 
+
     status.innerText =
       "✓ PRESENT";
+
 
     document.getElementById(
       "message"
     ).innerText =
-      result.message || "Attendance recorded.";
+      result.message ||
+      "Attendance recorded.";
 
-  } else {
-    rejectedSound.currentTime = 0;
-    rejectedSound.play().catch(function(error) {
-      console.log("Rejected sound could not play:", error);
-    });
+  }
+
+
+  else {
+
+    rejectedSound.currentTime =
+      0;
+
+
+    rejectedSound
+      .play()
+      .catch(
+        function(error) {
+
+          console.log(
+            "Rejected sound could not play:",
+            error
+          );
+
+        }
+      );
+
 
     const status =
       document.getElementById(
         "resultStatus"
       );
 
+
     status.className =
       "rejected";
+
 
     status.innerText =
       "✗ " +
@@ -608,11 +1560,13 @@ function displayAttendanceResult(
         "REJECTED"
       );
 
+
     document.getElementById(
       "message"
     ).innerText =
       result.message ||
       "Attendance was not recorded.";
+
   }
 
 
@@ -622,6 +1576,7 @@ function displayAttendanceResult(
       "admissionId"
     ).innerText =
       result.admissionId;
+
   }
 
 
@@ -631,15 +1586,7 @@ function displayAttendanceResult(
       "studentName"
     ).innerText =
       result.studentName;
-  }
 
-
-  if (result.term) {
-
-    document.getElementById(
-      "term"
-    ).innerText =
-      result.term;
   }
 
 
@@ -649,6 +1596,7 @@ function displayAttendanceResult(
       "className"
     ).innerText =
       result.className;
+
   }
 
 
@@ -658,6 +1606,7 @@ function displayAttendanceResult(
       "mode"
     ).innerText =
       result.modeOfExam;
+
   }
 
 
@@ -668,10 +1617,6 @@ function displayAttendanceResult(
     ).innerText =
       result.subject;
 
-    document.getElementById(
-      "subjectRow"
-    ).style.display =
-      "block";
   }
 
 
@@ -683,10 +1628,6 @@ function displayAttendanceResult(
       "Session " +
       result.session;
 
-    document.getElementById(
-      "sessionRow"
-    ).style.display =
-      "block";
   }
 
 
@@ -697,10 +1638,6 @@ function displayAttendanceResult(
     ).innerText =
       result.sessionTime;
 
-    document.getElementById(
-      "sessionTimeRow"
-    ).style.display =
-      "block";
   }
 
 
@@ -708,6 +1645,7 @@ function displayAttendanceResult(
     "scanAgainButton"
   ).style.display =
     "block";
+
 }
 
 
@@ -715,28 +1653,35 @@ function displayAttendanceResult(
    REJECTED RESULT
    ========================================================= */
 
-function showRejected(message) {
+function showRejected(
+  message
+) {
 
   const status =
     document.getElementById(
       "resultStatus"
     );
 
+
   status.className =
     "rejected";
 
+
   status.innerText =
     "✗ REJECTED";
+
 
   document.getElementById(
     "message"
   ).innerText =
     message;
 
+
   document.getElementById(
     "scanAgainButton"
   ).style.display =
     "block";
+
 }
 
 
@@ -751,30 +1696,24 @@ function scanAgain() {
   ).style.display =
     "none";
 
+
   document.getElementById(
     "scanAgainButton"
   ).style.display =
     "none";
 
-  document.getElementById(
-    "subjectRow"
-  ).style.display =
-    "none";
 
-  document.getElementById(
-    "sessionRow"
-  ).style.display =
-    "none";
+  scanLocked =
+    false;
 
-  document.getElementById(
-    "sessionTimeRow"
-  ).style.display =
-    "none";
 
   startScanner();
+
 }
 
 </script>
 
 </body>
+
 </html>
+```
